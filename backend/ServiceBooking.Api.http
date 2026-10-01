@@ -31,3 +31,27 @@ Accept: application/json
 ### Đăng xuất (idempotent, luôn xoá cookie)
 POST {{ServiceBooking.Api_HostAddress}}/api/auth/logout
 Accept: application/json
+
+### Khung giờ trống (cần đăng nhập; dùng serviceId/staffId đang hoạt động và ngày có lịch làm)
+GET {{ServiceBooking.Api_HostAddress}}/api/bookings/available-slots?serviceId=1&staffId=1&date=2026-10-02
+Accept: application/json
+
+### Tạo booking (đăng nhập bằng customer; slot phải còn trống)
+POST {{ServiceBooking.Api_HostAddress}}/api/bookings
+Content-Type: application/json
+
+{
+  "serviceId": 1,
+  "staffId": 1,
+  "date": "2026-10-02",
+  "startTime": "09:00:00",
+  "customerNote": "Tôi sẽ đến đúng giờ"
+}
+
+### Danh sách booking (đăng nhập bằng Admin)
+GET {{ServiceBooking.Api_HostAddress}}/api/bookings?offset=0&limit=20&status=Pending
+Accept: application/json
+
+### Booking của tôi (đăng nhập bằng customer)
+GET {{ServiceBooking.Api_HostAddress}}/api/bookings/my-bookings?offset=0&limit=20
+Accept: application/json

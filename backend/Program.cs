@@ -23,11 +23,15 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddMemoryCache();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IServiceRepository, ServiceRepository>();
+builder.Services.AddScoped<IStaffRepository, StaffRepository>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<ServiceService>();
+builder.Services.AddScoped<StaffService>();
 builder.Services.AddSingleton<IMemoryCacheService, MemoryCacheService>();
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

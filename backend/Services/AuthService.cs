@@ -1,6 +1,7 @@
 namespace ServiceBooking.Api.Services;
 
 using ServiceBooking.Api.DTOs.Requests;
+using ServiceBooking.Api.DTOs.Responses;
 using ServiceBooking.Api.Exceptions;
 using ServiceBooking.Api.Interfaces;
 using ServiceBooking.Api.Models;
@@ -22,7 +23,7 @@ public class AuthService
         _jwtTokenService = jwtTokenService;
     }
 
-    public async Task<User> RegisterUserAsync(UserRegisterRequestDTO request)
+    public async Task<RegisterResponseDTO> RegisterUserAsync(UserRegisterRequestDTO request)
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
@@ -39,11 +40,16 @@ public class AuthService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
         };
 
-        return await _userRepository.RegisterUserAsync(user);
+        var registeredUser = await _userRepository.RegisterUserAsync(user);
+
+        return RegisterResponseDTO.From(
+            "Đăng ký thành công",
+            UserResponseDTO.FromEntity(registeredUser));
     }
 
 
-    public async Task<(string AccessToken, string RefreshToken, User User)> LoginAsync(UserLoginRequestDTO request)
+    public async Task<(string AccessToken, string RefreshToken, LoginResponseDTO Response)> LoginAsync(
+        UserLoginRequestDTO request)
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var user = await FindUserByEmailAsync(normalizedEmail);
@@ -58,19 +64,21 @@ public class AuthService
 
         await SetRefreshTokenAsync(user.Id, refreshToken);
 
-        return (accessToken, refreshToken, user);
+        var response = LoginResponseDTO.From(
+            "Đăng nhập thành công",
+            UserResponseDTO.FromEntity(user));
+
+        return (accessToken, refreshToken, response);
     }
 
 
-    public async Task<(string AccessToken, string RefreshToken)> RefreshTokenAsync(string refreshToken)
+    public async Task<(string AccessToken, string RefreshToken, MessageResponseDTO Response)> RefreshTokenAsync(
+        string refreshToken)
     {
-        // Tìm user ngay từ hash trong DB nên chỉ cần 1 truy vấn,
-        // không cần gọi thêm GetUserByIdAsync như trước đây.
         var user = await _userRepository.FindUserByRefreshTokenAsync(refreshToken);
 
         if (user == null || user.RefreshTokenExpiresAt is null || user.RefreshTokenExpiresAt < DateTime.UtcNow)
         {
-            // Token tồn tại nhưng đã hết hạn: dọn luôn để không tích tụ rác.
             if (user != null)
             {
                 await _userRepository.ClearRefreshTokenAsync(user.Id);
@@ -84,12 +92,18 @@ public class AuthService
 
         await SetRefreshTokenAsync(user.Id, newRefreshToken);
 
-        return (newAccessToken, newRefreshToken);
+        return (
+            newAccessToken,
+            newRefreshToken,
+            MessageResponseDTO.From("Làm mới token thành công"));
     }
 
-    public async Task<User?> GetUserByIdAsync(int id)
+    public async Task<MeResponseDTO> GetMeAsync(int id)
     {
-        return await _userRepository.GetUserByIdAsync(id);
+        var user = await _userRepository.GetUserByIdAsync(id)
+            ?? throw AppException.NotFound("Không tìm thấy người dùng");
+
+        return MeResponseDTO.FromEntity(user);
     }
 
     private async Task<User?> FindUserByEmailAsync(string email)
@@ -106,18 +120,24 @@ public class AuthService
     }
 
 
-    public async Task LogoutAsync(string refreshToken, TimeSpan expiration, string jti)
+    public async Task<MessageResponseDTO> LogoutAsync(
+        string? refreshToken,
+        TimeSpan expiration,
+        string jti)
     {
-        var user = await _userRepository.FindUserByRefreshTokenAsync(refreshToken);
-
-        if (user != null)
+        if (!string.IsNullOrEmpty(refreshToken))
         {
-            await _userRepository.ClearRefreshTokenAsync(user.Id);
+            var user = await _userRepository.FindUserByRefreshTokenAsync(refreshToken);
+
+            if (user != null)
+                await _userRepository.ClearRefreshTokenAsync(user.Id);
         }
 
         if (expiration > TimeSpan.Zero && !string.IsNullOrEmpty(jti))
         {
             _memoryCacheService.Set($"{LogoutCacheKeyPrefix}{jti}", true, expiration);
         }
+
+        return MessageResponseDTO.From("Đăng xuất thành công");
     }
 }

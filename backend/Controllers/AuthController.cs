@@ -26,9 +26,7 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<ActionResult<RegisterResponseDTO>> Register(UserRegisterRequestDTO request)
     {
-        var user = await _authService.RegisterUserAsync(request);
-
-        return Ok(RegisterResponseDTO.From("Đăng ký thành công", UserResponseDTO.FromEntity(user)));
+        return Ok(await _authService.RegisterUserAsync(request));
     }
 
     [Authorize]
@@ -42,23 +40,17 @@ public class AuthController : ControllerBase
             throw AppException.Unauthorized("Token không hợp lệ");
         }
 
-        var user = await _authService.GetUserByIdAsync(userId);
-        if (user == null)
-        {
-            throw AppException.NotFound("Không tìm thấy người dùng");
-        }
-
-        return Ok(MeResponseDTO.FromEntity(user));
+        return Ok(await _authService.GetMeAsync(userId));
     }
 
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponseDTO>> Login(UserLoginRequestDTO request)
     {
-        var (accessToken, refreshToken, user) = await _authService.LoginAsync(request);
+        var (accessToken, refreshToken, response) = await _authService.LoginAsync(request);
 
         _jwtTokenService.AppendAuthCookies(Response, accessToken, refreshToken);
 
-        return Ok(LoginResponseDTO.From("Đăng nhập thành công", UserResponseDTO.FromEntity(user)));
+        return Ok(response);
     }
 
 
@@ -70,20 +62,20 @@ public class AuthController : ControllerBase
             var refreshToken = Request.Cookies["refreshToken"];
             var accessToken = Request.Cookies["accessToken"];
 
-            if (!string.IsNullOrEmpty(refreshToken))
-            {
-                var jti = string.IsNullOrEmpty(accessToken)
-                    ? null
-                    : _jwtTokenService.ReadJtiFromAccessToken(accessToken);
+            var jti = string.IsNullOrEmpty(accessToken)
+                ? null
+                : _jwtTokenService.ReadJtiFromAccessToken(accessToken);
 
-                var remainingTime = string.IsNullOrEmpty(accessToken)
-                    ? null
-                    : _jwtTokenService.GetRemainingLifetime(accessToken);
+            var remainingTime = string.IsNullOrEmpty(accessToken)
+                ? null
+                : _jwtTokenService.GetRemainingLifetime(accessToken);
 
-                await _authService.LogoutAsync(refreshToken, remainingTime ?? TimeSpan.Zero, jti ?? string.Empty);
-            }
+            var response = await _authService.LogoutAsync(
+                refreshToken,
+                remainingTime ?? TimeSpan.Zero,
+                jti ?? string.Empty);
 
-            return Ok(MessageResponseDTO.From("Đăng xuất thành công"));
+            return Ok(response);
         }
         finally
         {
@@ -101,10 +93,10 @@ public class AuthController : ControllerBase
             throw AppException.Unauthorized("Thiếu refresh token");
         }
 
-        var (accessToken, newRefreshToken) = await _authService.RefreshTokenAsync(refreshToken);
+        var (accessToken, newRefreshToken, response) = await _authService.RefreshTokenAsync(refreshToken);
 
         _jwtTokenService.AppendAuthCookies(Response, accessToken, newRefreshToken);
 
-        return Ok(MessageResponseDTO.From("Làm mới token thành công"));
+        return Ok(response);
     }
 }
