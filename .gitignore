@@ -1,0 +1,109 @@
+# ==============================================================================
+#  .gitignore gốc — áp dụng cho TOÀN BỘ repo (backend/ + frontend/)
+#  Dùng **/ ở trước để khớp ở mọi cấp thư mục
+# ==============================================================================
+
+
+# ------------------------------------------------------------------------------
+#  SECRETS & cấu hình riêng của từng máy  (quan trọng nhất - kiểm tra lại khi commit)
+# ------------------------------------------------------------------------------
+# File biến môi trường của Next.js. Chỉ commit .env.example.
+.env
+.env.*
+!.env.example
+
+# Toàn bộ appsettings*.json đều chứa JWT secret + mật khẩu DB => KHÔNG commit.
+# Lưu ý: file vẫn nằm trên máy và app vẫn chạy bình thường —
+# .gitignore chỉ có tác dụng với việc commit, KHÔNG xoá file.
+appsettings.json
+appsettings.Development.json
+appsettings.*.local.json
+!appsettings.example.json
+
+# Chứng thư số / khoá
+secrets.json
+*.pfx
+*.p12
+*.key
+*.pem
+*.jks
+
+# Database
+*.mdf
+*.ldf
+*.sqlite
+*.sqlite3
+
+
+# ------------------------------------------------------------------------------
+#  FRONTEND — Node.js / Next.js
+# ------------------------------------------------------------------------------
+**/node_modules/
+**/.pnp.*
+**/.pnp.js
+**/yarn.lock
+**/.yarn/*
+!**/.yarn/patches
+!**/.yarn/plugins
+!**/.yarn/releases
+!**/.yarn/versions
+
+**/.next/
+**/out/
+**/build/
+**/next-env.d.ts
+**/*.tsbuildinfo
+**/.eslintcache
+**/.vercel
+
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/.pnpm-debug.log*
+**/logs/
+**/*.log
+
+
+# ------------------------------------------------------------------------------
+#  BACKEND — .NET / ASP.NET Core
+# ------------------------------------------------------------------------------
+**/bin/
+**/obj/
+**/[Ll]og/
+**/[Ll]ogs/
+**/artifacts/
+**/*.binlog
+
+# Trình biên tập / IDE
+**/.vs/
+**/.vscode/
+**/.idea/
+**/*.user
+**/*.suo
+**/*.userosscache
+**/*.sln.docstates
+**/*.DotSettings.user
+**/project.lock.json
+**/project.fragment.lock.json
+**/project.assets.json
+
+
+# ------------------------------------------------------------------------------
+#  TEST / COVERAGE
+# ------------------------------------------------------------------------------
+**/TestResults/
+**/coverage/
+**/coverage*.json
+**/coverage*.xml
+**/coverage*.info
+
+
+# ------------------------------------------------------------------------------
+#  HỆ ĐIỀU HÀNH
+# ------------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+*.lnk

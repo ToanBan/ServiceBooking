@@ -1,0 +1,33 @@
+@ServiceBooking.Api_HostAddress = http://localhost:5036
+
+### Đăng ký (201/200) — lỗi validation trả 400 { message, errors, traceId }
+POST {{ServiceBooking.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Test User",
+  "email": "test@example.com",
+  "password": "Test@1234",
+  "confirmPassword": "Test@1234"
+}
+
+### Đăng nhập — set cookie accessToken + refreshToken, trả kèm user
+POST {{ServiceBooking.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Test@1234"
+}
+
+### Thông tin user hiện tại (yêu cầu cookie accessToken)
+GET {{ServiceBooking.Api_HostAddress}}/api/auth/me
+Accept: application/json
+
+### Làm mới token (yêu cầu cookie refreshToken)
+POST {{ServiceBooking.Api_HostAddress}}/api/auth/refresh-token
+Accept: application/json
+
+### Đăng xuất (idempotent, luôn xoá cookie)
+POST {{ServiceBooking.Api_HostAddress}}/api/auth/logout
+Accept: application/json
