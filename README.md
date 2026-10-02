@@ -1,9 +1,5 @@
 # Service Booking Management System
 
-Bài test tuyển dụng vị trí **Full-stack Intern**.
-
-<!-- TODO: thay bằng tên tác giả -->
-**Tác giả:** TODO: tên tác giả
 
 Hệ thống đặt lịch dịch vụ gồm backend ASP.NET Core Web API và frontend Next.js. Ứng dụng cho phép quản trị viên thiết lập dịch vụ, nhân viên và ca làm việc; khách hàng chọn dịch vụ, nhân viên, ngày và khung giờ để đặt lịch; quản trị viên xác nhận, hoàn tất hoặc theo dõi lịch hẹn.
 
@@ -122,22 +118,6 @@ ServiceBooking/
 | Docker + Docker Compose | Docker Desktop (Compose v2) | Dùng để chạy PostgreSQL 16 |
 | dotnet-ef | **10.x** (chỉ cần khi muốn thao tác migration thủ công) | Cài bên dưới |
 
-Cài `dotnet-ef` (không bắt buộc — backend tự migrate khi khởi động):
-
-```bash
-dotnet tool install --global dotnet-ef --version 10.*
-```
-
-Nếu `dotnet ef` báo không tìm thấy lệnh, thêm thư mục tools vào PATH:
-
-```bash
-export PATH="$PATH:$HOME/.dotnet/tools"     # macOS / Linux
-```
-
-```powershell
-$env:PATH += ";$env:USERPROFILE\.dotnet\tools"   # Windows PowerShell
-```
-
 ---
 
 ## 5. Hướng dẫn cài đặt và chạy
@@ -147,7 +127,7 @@ Cần **3 terminal** mở song song: một cho database, một cho backend, mộ
 ### Bước 0 — Lấy mã nguồn
 
 ```bash
-git clone <REPO_URL>      # TODO: thay bằng URL repo thật
+git clone https://github.com/ToanBan/ServiceBooking
 cd ServiceBooking
 ```
 
@@ -299,11 +279,6 @@ npm run dev
 
 Mở trình duyệt tại **`http://localhost:3000`**.
 
-#### Vì sao frontend gọi API không cần CORS
-
-`next.config.ts` cấu hình rewrite: mọi request `/api/*` và `/hubs/*` từ trình duyệt được proxy sang `API_BASE_URL` (mặc định `http://localhost:5036`). Nhờ vậy request trở thành **same-origin**, cookie `httpOnly` của backend được gửi tự động và không phát sinh CORS.
-
-Vì thế `frontend/src/config/env.ts` mặc định `NEXT_PUBLIC_API_BASE_URL = "/api"` khi biến này không được khai báo — và `.env.example` cố ý **không** khai báo biến đó. Chỉ khai báo `NEXT_PUBLIC_API_BASE_URL` khi bạn muốn trình duyệt gọi thẳng backend (lúc đó phải thêm origin của frontend vào `Cors:AllowedOrigins` trong `appsettings.json`).
 
 ### Bước 4 — Kiểm tra nhanh
 
