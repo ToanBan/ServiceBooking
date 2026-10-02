@@ -15,7 +15,7 @@ Hệ thống đặt lịch dịch vụ gồm backend ASP.NET Core Web API và fr
 6. [Tài khoản demo](#6-tài-khoản-demo)
 7. [Dữ liệu mẫu](#7-dữ-liệu-mẫu)
 8. [Màn hình](#8-màn-hình)
-9. [API](#9-api)
+9. [CÁC API ĐÃ HOÀN THÀNH](#9-api)
 10. [Test API](#10-test-api)
 11. [Quy tắc nghiệp vụ và quyết định thiết kế](#11-quy-tắc-nghiệp-vụ-và-quyết-định-thiết-kế)
 12. [Thiết kế database](#12-thiết-kế-database)
@@ -375,7 +375,7 @@ Phân quyền phía frontend do `frontend/src/components/auth/admin-guard.tsx` �
 
 ---
 
-## 9. API
+## 9. CÁC API ĐÃ HOÀN THÀNH
 
 Base URL: `http://localhost:5036`. Bảng dưới lấy trực tiếp từ 4 controller trong `backend/Controllers/`.
 
