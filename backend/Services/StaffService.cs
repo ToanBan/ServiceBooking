@@ -9,10 +9,16 @@ using ServiceBooking.Api.Models;
 public class StaffService
 {
     private readonly IStaffRepository _staffRepository;
+    private readonly TimeZoneInfo _businessTimeZone;
 
     public StaffService(IStaffRepository staffRepository)
     {
         _staffRepository = staffRepository;
+
+        var timeZoneId = OperatingSystem.IsWindows()
+            ? "SE Asia Standard Time"
+            : "Asia/Ho_Chi_Minh";
+        _businessTimeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
     }
 
     public async Task<PagedResponseDTO<StaffResponseDTO>> GetAllAsync(
@@ -63,6 +69,16 @@ public class StaffService
         if (request.StartTime >= request.EndTime)
         {
             throw AppException.BadRequest("Giờ bắt đầu phải nhỏ hơn giờ kết thúc.");
+        }
+
+        var businessNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _businessTimeZone);
+        var today = DateOnly.FromDateTime(businessNow);
+        var currentTime = TimeOnly.FromDateTime(businessNow);
+
+        if (request.WorkDate < today
+            || (request.WorkDate == today && request.StartTime <= currentTime))
+        {
+            throw AppException.BadRequest("Không thể tạo ca làm việc có thời gian bắt đầu trong quá khứ.");
         }
 
         if (await _staffRepository.HasOverlapAsync(staffId, request.WorkDate, request.StartTime, request.EndTime))

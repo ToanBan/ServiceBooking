@@ -21,6 +21,7 @@ public interface IBookingRepository
 		int? customerId,
 		BookingStatus? status,
 		string? search,
+		DateOnly? date,
 		int offset,
 		int limit);
 

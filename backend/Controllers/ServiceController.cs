@@ -6,7 +6,7 @@ namespace ServiceBooking.Api.Controllers;
 using ServiceBooking.Api.DTOs.Requests;
 using ServiceBooking.Api.DTOs.Responses;
 using ServiceBooking.Api.Services;
-
+using ServiceBooking.Api.Models;
 [ApiController]
 [Route("api/services")]
 public class ServiceController : ControllerBase
@@ -34,7 +34,7 @@ public class ServiceController : ControllerBase
         => Ok(await _serviceService.GetByIdAsync(id));
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
     public async Task<ActionResult<ServiceResponseDTO>> Create(ServiceRequestDTO request)
     {
         var created = await _serviceService.CreateAsync(request);
@@ -43,7 +43,7 @@ public class ServiceController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
     public async Task<ActionResult<ServiceResponseDTO>> Update(int id, ServiceRequestDTO request)
         => Ok(await _serviceService.UpdateAsync(id, request));
 

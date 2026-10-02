@@ -39,7 +39,7 @@ public class StaffController : ControllerBase
         => Ok(await _staffService.GetSchedulesAsync(id, from, to));
 
     [HttpPost("{id:int}/schedules")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
     public async Task<ActionResult<WorkScheduleResponseDTO>> CreateSchedule(
         int id,
         [FromBody] WorkScheduleRequestDTO request)

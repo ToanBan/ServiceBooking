@@ -21,7 +21,7 @@ public class ServiceRepository : IServiceRepository
         var totalCount = await query.CountAsync();
 
         var items = await query
-            .OrderBy(s => s.Id)
+            .OrderByDescending(s => s.Id)
             .Skip(offset)
             .Take(limit)
             .ToListAsync();

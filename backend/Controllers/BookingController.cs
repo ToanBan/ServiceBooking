@@ -56,13 +56,15 @@ public class BookingController : ControllerBase
     public async Task<ActionResult<PagedResponseDTO<BookingResponseDTO>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] BookingStatus? status = null,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] DateOnly? date = null)
     {
         var safeOffset = GetOffset(page);
 
         return Ok(await _bookingService.GetAllAsync(
             status,
             search,
+            date,
             safeOffset,
             DefaultLimit));
     }
@@ -71,13 +73,15 @@ public class BookingController : ControllerBase
     [Authorize(Roles = nameof(UserRole.Customer))]
     public async Task<ActionResult<PagedResponseDTO<BookingResponseDTO>>> GetMyBookings(
         [FromQuery] int page = 1,
-        [FromQuery] BookingStatus? status = null)
+        [FromQuery] BookingStatus? status = null,
+        [FromQuery] DateOnly? date = null)
     {
         var safeOffset = GetOffset(page);
 
         return Ok(await _bookingService.GetMyBookingsAsync(
             GetCurrentCustomerId(),
             status,
+            date,
             safeOffset,
             DefaultLimit));
     }

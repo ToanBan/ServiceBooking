@@ -11,18 +11,21 @@ public class BookingService
     private readonly IServiceRepository _serviceRepository;
     private readonly IStaffRepository _staffRepository;
     private readonly IBookingRepository _bookingRepository;
+    private readonly IBookingRealtimeNotifier _bookingRealtimeNotifier;
     private readonly TimeZoneInfo _businessTimeZone;
 
     public BookingService(
         IServiceRepository serviceRepository,
         IStaffRepository staffRepository,
-        IBookingRepository bookingRepository
+        IBookingRepository bookingRepository,
+        IBookingRealtimeNotifier bookingRealtimeNotifier
 
     )
     {
         _serviceRepository = serviceRepository;
         _staffRepository = staffRepository;
         _bookingRepository = bookingRepository;
+        _bookingRealtimeNotifier = bookingRealtimeNotifier;
 
         var defaultTimeZoneId = OperatingSystem.IsWindows()
             ? "SE Asia Standard Time"
@@ -153,12 +156,17 @@ public class BookingService
             startTime,
             TimeOnly.FromDateTime(localEnd));
 
-        return BookingResponseDTO.FromEntity(created);
+        var response = BookingResponseDTO.FromEntity(created);
+        await _bookingRealtimeNotifier.NotifyBookingCreatedAsync(
+            response.Id,
+            response.CustomerId);
+        return response;
     }
 
     public async Task<PagedResponseDTO<BookingResponseDTO>> GetAllAsync(
         BookingStatus? status,
         string? search,
+        DateOnly? date,
         int offset,
         int limit)
     {
@@ -166,6 +174,7 @@ public class BookingService
             null,
             status,
             search,
+            date,
             offset,
             limit);
 
@@ -175,6 +184,7 @@ public class BookingService
     public async Task<PagedResponseDTO<BookingResponseDTO>> GetMyBookingsAsync(
         int customerId,
         BookingStatus? status,
+        DateOnly? date,
         int offset,
         int limit)
     {
@@ -182,6 +192,7 @@ public class BookingService
             customerId,
             status,
             null,
+            date,
             offset,
             limit);
 
@@ -201,7 +212,12 @@ public class BookingService
             status,
             DateTime.UtcNow);
 
-        return BookingResponseDTO.FromEntity(updated);
+        var response = BookingResponseDTO.FromEntity(updated);
+        await _bookingRealtimeNotifier.NotifyBookingStatusChangedAsync(
+            response.Id,
+            response.CustomerId,
+            response.Status);
+        return response;
     }
 
     public async Task<BookingResponseDTO> CancelAsync(
@@ -215,7 +231,11 @@ public class BookingService
             reason,
             DateTime.UtcNow);
 
-        return BookingResponseDTO.FromEntity(cancelled);
+        var response = BookingResponseDTO.FromEntity(cancelled);
+        await _bookingRealtimeNotifier.NotifyBookingCancelledAsync(
+            response.Id,
+            response.CustomerId);
+        return response;
     }
 
     private static PagedResponseDTO<BookingResponseDTO> ToPagedResponse(

@@ -1,0 +1,712 @@
+{
+  "info": {
+    "_postman_id": "d79f77d7-72a0-4892-87cb-703d996f1741",
+    "name": "ServiceBooking API",
+    "description": "Collection test API theo contract hiện tại của backend. Chạy tuần tự trên database vừa migrate/seed. Login lấy JWT từ Set-Cookie vì response JSON không trả token. Booking hoàn tất chỉ được phép khi nowUtc >= EndTime; vì vậy collection kiểm tra hoàn tất sớm bị 409, không giả lập thành công bằng cách sửa thời gian hệ thống.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5036" },
+    { "key": "adminEmail", "value": "admin@servicebooking.com" },
+    { "key": "adminPassword", "value": "Admin@123" },
+    { "key": "customer1Email", "value": "nguyenvana@gmail.com" },
+    { "key": "customerPassword", "value": "Customer@123" },
+    { "key": "customer2Email", "value": "tranthib@gmail.com" },
+    { "key": "adminToken", "value": "" },
+    { "key": "customer1Token", "value": "" },
+    { "key": "customer2Token", "value": "" },
+    { "key": "adminRefreshToken", "value": "" },
+    { "key": "customer2RefreshToken", "value": "" },
+    { "key": "adminId", "value": "" },
+    { "key": "customer1Id", "value": "" },
+    { "key": "customer2Id", "value": "" },
+    { "key": "staffId", "value": "" },
+    { "key": "scheduleTestStaffId", "value": "" },
+    { "key": "lockedStaffId", "value": "" },
+    { "key": "serviceId", "value": "" },
+    { "key": "longServiceId", "value": "" },
+    { "key": "lockedServiceId", "value": "" },
+    { "key": "createdServiceId", "value": "" },
+    { "key": "bookingId", "value": "" },
+    { "key": "adjacentBookingId", "value": "" },
+    { "key": "blankReasonBookingId", "value": "" },
+    { "key": "replacementBookingId", "value": "" },
+    { "key": "seedCompletedBookingId", "value": "" },
+    { "key": "yesterday", "value": "" },
+    { "key": "datePlus3", "value": "" },
+    { "key": "datePlus4", "value": "" },
+    { "key": "datePlus5", "value": "" },
+    { "key": "dateNoSchedule", "value": "" },
+    { "key": "runTag", "value": "" },
+    { "key": "longName", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const vnNow = new Date(Date.now() + 7 * 60 * 60 * 1000);",
+          "const addDays = (offset) => { const d = new Date(Date.UTC(vnNow.getUTCFullYear(), vnNow.getUTCMonth(), vnNow.getUTCDate() + offset)); return d.toISOString().slice(0, 10); };",
+          "pm.collectionVariables.set('yesterday', addDays(-1));",
+          "pm.collectionVariables.set('datePlus3', addDays(3));",
+          "pm.collectionVariables.set('datePlus4', addDays(4));",
+          "pm.collectionVariables.set('datePlus5', addDays(5));",
+          "pm.collectionVariables.set('dateNoSchedule', addDays(10));",
+          "pm.collectionVariables.set('longName', 'x'.repeat(1001));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login Admin - 200, lưu adminToken từ cookie",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+            "const cookies = pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value);",
+            "const readCookie = name => { const item = cookies.find(v => v.startsWith(name + '=')); if (!item) throw new Error('Thiếu cookie ' + name); return decodeURIComponent(item.split(';')[0].slice(name.length + 1)); };",
+            "pm.collectionVariables.set('adminToken', readCookie('accessToken'));",
+            "pm.collectionVariables.set('adminRefreshToken', readCookie('refreshToken'));",
+            "pm.collectionVariables.set('adminId', pm.response.json().user.id);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Login Customer 1 - 200, lưu customer1Token",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+            "const cookies = pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value);",
+            "const item = cookies.find(v => v.startsWith('accessToken=')); if (!item) throw new Error('Thiếu cookie accessToken');",
+            "pm.collectionVariables.set('customer1Token', decodeURIComponent(item.split(';')[0].slice('accessToken='.length)));",
+            "pm.collectionVariables.set('customer1Id', pm.response.json().user.id);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"{{customer1Email}}\",\"password\":\"{{customerPassword}}\"}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Login Customer 2 - 200, lưu customer2Token",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+            "const cookies = pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value);",
+            "const access = cookies.find(v => v.startsWith('accessToken=')); const refresh = cookies.find(v => v.startsWith('refreshToken='));",
+            "if (!access || !refresh) throw new Error('Thiếu auth cookie');",
+            "pm.collectionVariables.set('customer2Token', decodeURIComponent(access.split(';')[0].slice('accessToken='.length)));",
+            "pm.collectionVariables.set('customer2RefreshToken', decodeURIComponent(refresh.split(';')[0].slice('refreshToken='.length)));",
+            "pm.collectionVariables.set('customer2Id', pm.response.json().user.id);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"{{customer2Email}}\",\"password\":\"{{customerPassword}}\"}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "GET me Admin - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Đúng tài khoản Admin', function () { pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('adminEmail')); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/auth/me" }
+        },
+        {
+          "name": "GET me không token/cookie - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "protocolProfileBehavior": { "disableCookies": true },
+          "request": { "method": "GET", "header": [{ "key": "Cookie", "value": "accessToken=" }], "url": "{{baseUrl}}/api/auth/me" }
+        },
+        {
+          "name": "Login thiếu email - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"password\":\"Admin@123\"}" }, "url": "{{baseUrl}}/api/auth/login" }
+        },
+        {
+          "name": "Login email sai định dạng - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"email\":\"not-an-email\",\"password\":\"Admin@123\"}" }, "url": "{{baseUrl}}/api/auth/login" }
+        },
+        {
+          "name": "Login sai mật khẩu - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"Wrong@123\"}" }, "url": "{{baseUrl}}/api/auth/login" }
+        },
+        {
+          "name": "Register Customer hợp lệ - 200",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('runTag', String(Date.now()) + String(Math.floor(Math.random() * 100000)));"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"] } }
+          ],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"fullName\":\"Postman Test\",\"email\":\"postman-{{runTag}}@example.com\",\"password\":\"Postman@123\",\"confirmPassword\":\"Postman@123\"}" }, "url": "{{baseUrl}}/api/auth/register" }
+        },
+        {
+          "name": "Register email đã tồn tại - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"fullName\":\"Postman Test\",\"email\":\"postman-{{runTag}}@example.com\",\"password\":\"Postman@123\",\"confirmPassword\":\"Postman@123\"}" }, "url": "{{baseUrl}}/api/auth/register" }
+        },
+        {
+          "name": "Refresh token Customer 2 - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+            "const cookies = pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value);",
+            "const readCookie = name => { const item = cookies.find(v => v.startsWith(name + '=')); if (!item) throw new Error('Thiếu cookie ' + name); return decodeURIComponent(item.split(';')[0].slice(name.length + 1)); };",
+            "pm.collectionVariables.set('customer2Token', readCookie('accessToken'));",
+            "pm.collectionVariables.set('customer2RefreshToken', readCookie('refreshToken'));"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Cookie", "value": "refreshToken={{customer2RefreshToken}}" }], "url": "{{baseUrl}}/api/auth/refresh-token" }
+        },
+        {
+          "name": "Refresh không token - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "protocolProfileBehavior": { "disableCookies": true },
+          "request": { "method": "POST", "header": [{ "key": "Cookie", "value": "refreshToken=" }], "url": "{{baseUrl}}/api/auth/refresh-token" }
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "GET Services page 1 - 200, tự lấy ID seed",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+            "const items = pm.response.json().items; const find = name => { const s = items.find(x => x.name === name); if (!s) throw new Error('Không thấy service seed: ' + name); return s.id; };",
+            "pm.collectionVariables.set('serviceId', find('Cắt tóc cơ bản'));",
+            "pm.collectionVariables.set('longServiceId', find('Chăm sóc chuyên sâu'));",
+            "pm.collectionVariables.set('lockedServiceId', find('Dịch vụ tạm khóa'));",
+            "pm.test('Pagination contract', function () { pm.expect(pm.response.json().offset).to.eql(0); pm.expect(pm.response.json().limit).to.eql(10); });"
+          ] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/services?page=1" }
+        },
+        {
+          "name": "GET Services page 2 - 200, phân trang",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Offset trang 2 là 10', function () { pm.expect(pm.response.json().offset).to.eql(10); });"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/services?page=2" }
+        },
+        {
+          "name": "GET Service theo ID - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/services/{{serviceId}}" }
+        },
+        {
+          "name": "GET Service không tồn tại - 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/services/99999999" }
+        },
+        {
+          "name": "POST Service mới Admin - 201, lưu createdServiceId",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 201', function () { pm.response.to.have.status(201); });", "pm.collectionVariables.set('createdServiceId', pm.response.json().id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Postman Service {{runTag}}\",\"description\":\"Collection test\",\"durationMinutes\":30,\"price\":120000,\"isActive\":true}" }, "url": "{{baseUrl}}/api/services" }
+        },
+        {
+          "name": "POST Service thiếu tên - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"durationMinutes\":30,\"price\":100}" }, "url": "{{baseUrl}}/api/services" }
+        },
+        {
+          "name": "POST Service tên rỗng - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"\",\"durationMinutes\":30,\"price\":100}" }, "url": "{{baseUrl}}/api/services" }
+        },
+        {
+          "name": "POST Service tên quá 200 ký tự - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"{{longName}}\",\"durationMinutes\":30,\"price\":100}" }, "url": "{{baseUrl}}/api/services" }
+        },
+        {
+          "name": "POST Service duration 0 - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Bad duration\",\"durationMinutes\":0,\"price\":100}" }, "url": "{{baseUrl}}/api/services" }
+        },
+        {
+          "name": "POST Service giá âm - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Negative price\",\"durationMinutes\":30,\"price\":-1}" }, "url": "{{baseUrl}}/api/services" }
+        },
+        {
+          "name": "POST Service không token/cookie - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "protocolProfileBehavior": { "disableCookies": true },
+          "request": { "method": "POST", "header": [{ "key": "Cookie", "value": "accessToken=" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Unauthorized\",\"durationMinutes\":30,\"price\":1}" }, "url": "{{baseUrl}}/api/services" }
+        },
+        {
+          "name": "POST Service Customer - 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 403', function () { pm.response.to.have.status(403); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Forbidden\",\"durationMinutes\":30,\"price\":1}" }, "url": "{{baseUrl}}/api/services" }
+        },
+        {
+          "name": "PUT Service cập nhật Admin - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"] } }],
+          "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Updated Postman Service\",\"description\":\"Updated\",\"durationMinutes\":45,\"price\":130000,\"isActive\":true}" }, "url": "{{baseUrl}}/api/services/{{createdServiceId}}" }
+        },
+        {
+          "name": "PUT Service không tồn tại - 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"] } }],
+          "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"No service\",\"durationMinutes\":30,\"price\":100}" }, "url": "{{baseUrl}}/api/services/99999999" }
+        },
+        {
+          "name": "PUT Service Customer - 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 403', function () { pm.response.to.have.status(403); });"] } }],
+          "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Forbidden\",\"durationMinutes\":30,\"price\":100}" }, "url": "{{baseUrl}}/api/services/{{createdServiceId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Staffs & Schedules",
+      "item": [
+        {
+          "name": "GET Staffs page 1 hoạt động - 200, lấy ID seed",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+            "const items = pm.response.json().items; const find = name => { const s = items.find(x => x.fullName === name); if (!s) throw new Error('Không thấy staff seed: ' + name); return s.id; };",
+            "pm.collectionVariables.set('staffId', find('Ngộ Không'));",
+            "pm.collectionVariables.set('scheduleTestStaffId', find('Bát Giới'));",
+            "pm.collectionVariables.set('lockedStaffId', find('Bạch Long Mã'));"
+          ] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/staffs?isActive=true&page=1" }
+        },
+        {
+          "name": "GET Staffs gồm nhân viên khóa - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Có nhân viên đã khóa', function () { pm.expect(pm.response.json().items.some(x => x.id == pm.collectionVariables.get('lockedStaffId') && !x.isActive)).to.eql(true); });"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/staffs?isActive=false&page=1" }
+        },
+        {
+          "name": "GET Staffs page 2 - 200, phân trang",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Offset trang 2 là 10', function () { pm.expect(pm.response.json().offset).to.eql(10); });"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/staffs?page=2" }
+        },
+        {
+          "name": "GET lịch Bát Giới ngày +5 - 200, xác nhận hai ca seed",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+            "const rows = pm.response.json(); pm.test('Có ca 08-12 và 13-17', function () { pm.expect(rows.some(x => x.startTime.startsWith('08:00') && x.endTime.startsWith('12:00'))).to.eql(true); pm.expect(rows.some(x => x.startTime.startsWith('13:00') && x.endTime.startsWith('17:00'))).to.eql(true); });"
+          ] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/staffs/{{scheduleTestStaffId}}/schedules?from={{datePlus5}}&to={{datePlus5}}" }
+        },
+        {
+          "name": "GET lịch thời gian đảo from > to - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/staffs/{{staffId}}/schedules?from={{datePlus5}}&to={{datePlus3}}" }
+        },
+        {
+          "name": "GET lịch nhân viên không tồn tại - 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/staffs/99999999/schedules" }
+        },
+        {
+          "name": "POST ca kề liền trước ca seed 07-08 - 201",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 201', function () { pm.response.to.have.status(201); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workDate\":\"{{datePlus5}}\",\"startTime\":\"07:00:00\",\"endTime\":\"08:00:00\"}" }, "url": "{{baseUrl}}/api/staffs/{{scheduleTestStaffId}}/schedules" }
+        },
+        {
+          "name": "POST ca trùng một phần 07:30-08:30 - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workDate\":\"{{datePlus5}}\",\"startTime\":\"07:30:00\",\"endTime\":\"08:30:00\"}" }, "url": "{{baseUrl}}/api/staffs/{{scheduleTestStaffId}}/schedules" }
+        },
+        {
+          "name": "POST ca trùng hoàn toàn 08-12 - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workDate\":\"{{datePlus5}}\",\"startTime\":\"08:00:00\",\"endTime\":\"12:00:00\"}" }, "url": "{{baseUrl}}/api/staffs/{{scheduleTestStaffId}}/schedules" }
+        },
+        {
+          "name": "POST ca nằm trong 09-10 - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workDate\":\"{{datePlus5}}\",\"startTime\":\"09:00:00\",\"endTime\":\"10:00:00\"}" }, "url": "{{baseUrl}}/api/staffs/{{scheduleTestStaffId}}/schedules" }
+        },
+        {
+          "name": "POST ca bao trùm 07-12:30 - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workDate\":\"{{datePlus5}}\",\"startTime\":\"07:00:00\",\"endTime\":\"12:30:00\"}" }, "url": "{{baseUrl}}/api/staffs/{{scheduleTestStaffId}}/schedules" }
+        },
+        {
+          "name": "POST ca thiếu WorkDate - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"startTime\":\"08:00:00\",\"endTime\":\"09:00:00\"}" }, "url": "{{baseUrl}}/api/staffs/{{scheduleTestStaffId}}/schedules" }
+        },
+        {
+          "name": "POST ca start >= end - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workDate\":\"{{datePlus5}}\",\"startTime\":\"10:00:00\",\"endTime\":\"10:00:00\"}" }, "url": "{{baseUrl}}/api/staffs/{{scheduleTestStaffId}}/schedules" }
+        },
+        {
+          "name": "POST ca cho nhân viên bị khóa - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workDate\":\"{{datePlus5}}\",\"startTime\":\"08:00:00\",\"endTime\":\"09:00:00\"}" }, "url": "{{baseUrl}}/api/staffs/{{lockedStaffId}}/schedules" }
+        },
+        {
+          "name": "POST ca cho staff không tồn tại - 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workDate\":\"{{datePlus5}}\",\"startTime\":\"08:00:00\",\"endTime\":\"09:00:00\"}" }, "url": "{{baseUrl}}/api/staffs/99999999/schedules" }
+        },
+        {
+          "name": "POST ca Customer - 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 403', function () { pm.response.to.have.status(403); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workDate\":\"{{datePlus5}}\",\"startTime\":\"08:00:00\",\"endTime\":\"09:00:00\"}" }, "url": "{{baseUrl}}/api/staffs/{{scheduleTestStaffId}}/schedules" }
+        },
+        {
+          "name": "POST ca không token/cookie - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "protocolProfileBehavior": { "disableCookies": true },
+          "request": { "method": "POST", "header": [{ "key": "Cookie", "value": "accessToken=" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"workDate\":\"{{datePlus5}}\",\"startTime\":\"08:00:00\",\"endTime\":\"09:00:00\"}" }, "url": "{{baseUrl}}/api/staffs/{{scheduleTestStaffId}}/schedules" }
+        }
+      ]
+    },
+    {
+      "name": "Available slots",
+      "item": [
+        {
+          "name": "GET slots ngày +5 - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Trả về danh sách slot', function () { pm.expect(Array.isArray(pm.response.json())).to.eql(true); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{serviceId}}&staffId={{staffId}}&date={{datePlus5}}" }
+        },
+        {
+          "name": "GET slots thiếu tham số - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{serviceId}}&staffId={{staffId}}" }
+        },
+        {
+          "name": "GET slots date sai định dạng - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{serviceId}}&staffId={{staffId}}&date=not-a-date" }
+        },
+        {
+          "name": "GET slots ngày quá khứ - 400 (TC1)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{serviceId}}&staffId={{staffId}}&date={{yesterday}}" }
+        },
+        {
+          "name": "GET slots ngày không có ca - 200 danh sách rỗng",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Không có ca thì không có slot', function () { pm.expect(pm.response.json()).to.eql([]); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{serviceId}}&staffId={{staffId}}&date={{dateNoSchedule}}" }
+        },
+        {
+          "name": "GET slots dịch vụ bị khóa - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{lockedServiceId}}&staffId={{staffId}}&date={{datePlus5}}" }
+        },
+        {
+          "name": "GET slots staff bị khóa - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{serviceId}}&staffId={{lockedStaffId}}&date={{datePlus5}}" }
+        },
+        {
+          "name": "GET slots service không tồn tại - 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId=99999999&staffId={{staffId}}&date={{datePlus5}}" }
+        },
+        {
+          "name": "GET slots staff không tồn tại - 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{serviceId}}&staffId=99999999&date={{datePlus5}}" }
+        },
+        {
+          "name": "GET slots không token/cookie - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "protocolProfileBehavior": { "disableCookies": true },
+          "request": { "method": "GET", "header": [{ "key": "Cookie", "value": "accessToken=" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{serviceId}}&staffId={{staffId}}&date={{datePlus5}}" }
+        }
+      ]
+    },
+    {
+      "name": "Tạo booking",
+      "item": [
+        {
+          "name": "POST booking Customer1 ngày +5 08:00 - 201; backend tính EndTime và bỏ qua field giả",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+            "const b = pm.response.json(); pm.collectionVariables.set('bookingId', b.id);",
+            "pm.test('Backend giữ CustomerId theo token và trạng thái Pending', function () { pm.expect(b.customerId).to.eql(Number(pm.collectionVariables.get('customer1Id'))); pm.expect(b.status).to.eql('Pending'); });",
+            "pm.test('EndTime do backend tính đúng 30 phút', function () { pm.expect(new Date(b.endTime) - new Date(b.startTime)).to.eql(30 * 60000); });"
+          ] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"08:00:00\",\"customerNote\":\"Postman seed booking\",\"endTime\":\"2099-01-01T00:00:00Z\",\"customerId\":999999,\"status\":\"Completed\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "available-slots 08:00 bị ẩn sau khi đặt - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Slot 08:00 không còn khả dụng', function () { pm.expect(pm.response.json().some(x => x.startTime.startsWith('08:00'))).to.eql(false); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{serviceId}}&staffId={{staffId}}&date={{datePlus5}}" }
+        },
+        {
+          "name": "TC3: POST booking trùng y hệt - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer2Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"08:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "TC3: POST booking trùng một phần 08:15 - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer2Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"08:15:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "TC3: Booking liền kề 08:30 - 201, lưu adjacentBookingId",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 201', function () { pm.response.to.have.status(201); });", "pm.collectionVariables.set('adjacentBookingId', pm.response.json().id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer2Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"08:30:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "Tạo booking kiểm tra lý do hủy rỗng 09:00 - 201",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 201', function () { pm.response.to.have.status(201); });", "pm.collectionVariables.set('blankReasonBookingId', pm.response.json().id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"09:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "TC1: POST booking trong quá khứ - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{yesterday}}\",\"startTime\":\"09:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "TC2: Đặt trước ca 07:30 - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"07:30:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "TC2: Đặt sau ca 17:00 - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"17:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "TC2: Booking 120 phút vắt qua cuối ca 15:30 - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{longServiceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"15:30:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "TC2: Booking trong giờ nghỉ 12:00 - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"12:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "TC2: Booking ngày không có ca - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{dateNoSchedule}}\",\"startTime\":\"09:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "POST booking thiếu Date - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"startTime\":\"10:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "POST booking Date sai định dạng - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"invalid-date\",\"startTime\":\"10:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "POST booking CustomerNote quá 1000 ký tự - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"10:00:00\",\"customerNote\":\"{{longName}}\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "POST booking service bị khóa - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{lockedServiceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"10:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "POST booking staff bị khóa - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{lockedStaffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"10:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "POST booking service không tồn tại - 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":99999999,\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"10:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "POST booking staff không tồn tại - 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":99999999,\"date\":\"{{datePlus5}}\",\"startTime\":\"10:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "POST booking thiếu ServiceId - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"10:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "POST booking Customer không token/cookie - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "protocolProfileBehavior": { "disableCookies": true },
+          "request": { "method": "POST", "header": [{ "key": "Cookie", "value": "accessToken=" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"10:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        }
+      ]
+    },
+    {
+      "name": "Xem booking",
+      "item": [
+        {
+          "name": "GET my-bookings Customer1 - 200, phân trang",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('offset=0, limit=10', function () { pm.expect(pm.response.json().offset).to.eql(0); pm.expect(pm.response.json().limit).to.eql(10); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/my-bookings?page=1" }
+        },
+        {
+          "name": "GET my-bookings lọc trạng thái Pending và ngày - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Chỉ có Pending trong kết quả', function () { pm.expect(pm.response.json().items.every(x => x.status === 'Pending')).to.eql(true); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/my-bookings?page=1&status=Pending&date={{datePlus5}}" }
+        },
+        {
+          "name": "GET my-bookings trang 2 - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Offset trang 2 là 10', function () { pm.expect(pm.response.json().offset).to.eql(10); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/my-bookings?page=2" }
+        },
+        {
+          "name": "TC4: Customer2 không xem booking Customer1 qua my-bookings - 200, không có ID",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Không lộ booking của Customer1', function () { pm.expect(pm.response.json().items.some(x => x.id == pm.collectionVariables.get('bookingId'))).to.eql(false); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer2Token}}" }], "url": "{{baseUrl}}/api/bookings/my-bookings?page=1" }
+        },
+        {
+          "name": "GET Admin bookings - 200, lưu booking Completed seed",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+            "const found = pm.response.json().items.find(x => x.bookingCode === 'BK-SEED-001'); if (!found) throw new Error('Không thấy BK-SEED-001; cần DB mới seed');",
+            "pm.collectionVariables.set('seedCompletedBookingId', found.id);"
+          ] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/bookings?page=1&status=Completed&search=BK-SEED-001&date={{yesterday}}" }
+        },
+        {
+          "name": "GET Admin bookings phân trang/lọc - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Lọc Pending theo ngày và search', function () { pm.expect(pm.response.json().items.every(x => x.status === 'Pending' && x.bookingCode.includes('BK-SEED'))).to.eql(true); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/bookings?page=1&status=Pending&search=BK-SEED&date={{datePlus3}}" }
+        },
+        {
+          "name": "GET Admin bookings không token/cookie - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "protocolProfileBehavior": { "disableCookies": true },
+          "request": { "method": "GET", "header": [{ "key": "Cookie", "value": "accessToken=" }], "url": "{{baseUrl}}/api/bookings?page=1" }
+        },
+        {
+          "name": "GET Admin bookings Customer - 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 403', function () { pm.response.to.have.status(403); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings?page=1" }
+        }
+      ]
+    },
+    {
+      "name": "Đổi trạng thái (Admin)",
+      "item": [
+        {
+          "name": "TC5: Customer tự Confirmed - 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 403', function () { pm.response.to.have.status(403); });"] } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"Confirmed\"}" }, "url": "{{baseUrl}}/api/bookings/{{adjacentBookingId}}/status" }
+        },
+        {
+          "name": "TC5: Customer tự Completed - 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 403', function () { pm.response.to.have.status(403); });"] } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"Completed\"}" }, "url": "{{baseUrl}}/api/bookings/{{adjacentBookingId}}/status" }
+        },
+        {
+          "name": "Pending nhảy thẳng Completed - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"Completed\"}" }, "url": "{{baseUrl}}/api/bookings/{{adjacentBookingId}}/status" }
+        },
+        {
+          "name": "Pending -> Confirmed Admin - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Trạng thái Confirmed', function () { pm.expect(pm.response.json().status).to.eql('Confirmed'); });"] } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"Confirmed\"}" }, "url": "{{baseUrl}}/api/bookings/{{adjacentBookingId}}/status" }
+        },
+        {
+          "name": "Lặp lại Confirmed - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"Confirmed\"}" }, "url": "{{baseUrl}}/api/bookings/{{adjacentBookingId}}/status" }
+        },
+        {
+          "name": "Confirmed -> Completed trước EndTime - 409 theo rule nghiệp vụ",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"Completed\"}" }, "url": "{{baseUrl}}/api/bookings/{{adjacentBookingId}}/status" }
+        },
+        {
+          "name": "Yêu cầu trạng thái Pending/đi ngược - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"Pending\"}" }, "url": "{{baseUrl}}/api/bookings/{{adjacentBookingId}}/status" }
+        },
+        {
+          "name": "PATCH thiếu Status - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/api/bookings/{{adjacentBookingId}}/status" }
+        },
+        {
+          "name": "PATCH booking không tồn tại - 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"] } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"Confirmed\"}" }, "url": "{{baseUrl}}/api/bookings/99999999/status" }
+        },
+        {
+          "name": "PATCH status không token/cookie - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "protocolProfileBehavior": { "disableCookies": true },
+          "request": { "method": "PATCH", "header": [{ "key": "Cookie", "value": "accessToken=" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"Confirmed\"}" }, "url": "{{baseUrl}}/api/bookings/{{adjacentBookingId}}/status" }
+        }
+      ]
+    },
+    {
+      "name": "Hủy booking (Customer)",
+      "item": [
+        {
+          "name": "TC4: Customer2 hủy booking của Customer1 - 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer2Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"Không phải booking của tôi\"}" }, "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel" }
+        },
+        {
+          "name": "Hủy thiếu Reason - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel" }
+        },
+        {
+          "name": "Hủy Reason rỗng - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"\"}" }, "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel" }
+        },
+        {
+          "name": "Hủy Reason quá 1000 ký tự - 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"{{longName}}\"}" }, "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel" }
+        },
+        {
+          "name": "TC6: Hủy Reason toàn khoảng trắng - mong đợi 400; sẽ lộ backend nếu nhận",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 400 - reason whitespace phải bị từ chối', function () { pm.response.to.have.status(400); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"   \"}" }, "url": "{{baseUrl}}/api/bookings/{{blankReasonBookingId}}/cancel" }
+        },
+        {
+          "name": "Customer1 hủy booking Pending hợp lệ - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Trạng thái Cancelled', function () { pm.expect(pm.response.json().status).to.eql('Cancelled'); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"Khách hàng đổi lịch\"}" }, "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel" }
+        },
+        {
+          "name": "available-slots hiện lại sau khi hủy - 200",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });", "pm.test('Slot 08:00 đã hiện lại', function () { pm.expect(pm.response.json().some(x => x.startTime.startsWith('08:00'))).to.eql(true); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }], "url": "{{baseUrl}}/api/bookings/available-slots?serviceId={{serviceId}}&staffId={{staffId}}&date={{datePlus5}}" }
+        },
+        {
+          "name": "TC3: Đặt lại đúng khung giờ sau khi hủy - 201",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 201', function () { pm.response.to.have.status(201); });", "pm.collectionVariables.set('replacementBookingId', pm.response.json().id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":{{serviceId}},\"staffId\":{{staffId}},\"date\":\"{{datePlus5}}\",\"startTime\":\"08:00:00\"}" }, "url": "{{baseUrl}}/api/bookings" }
+        },
+        {
+          "name": "TC6: Hủy lần hai cùng booking - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"Hủy lần hai\"}" }, "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel" }
+        },
+        {
+          "name": "TC6: Hủy booking đã Completed seed - 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{customer1Token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"Không thể hủy completed\"}" }, "url": "{{baseUrl}}/api/bookings/{{seedCompletedBookingId}}/cancel" }
+        },
+        {
+          "name": "POST cancel không token/cookie - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "protocolProfileBehavior": { "disableCookies": true },
+          "request": { "method": "POST", "header": [{ "key": "Cookie", "value": "accessToken=" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"No token\"}" }, "url": "{{baseUrl}}/api/bookings/{{replacementBookingId}}/cancel" }
+        },
+        {
+          "name": "Logout - 200, xóa refresh token customer2",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Cookie", "value": "accessToken={{customer2Token}}; refreshToken={{customer2RefreshToken}}" }], "url": "{{baseUrl}}/api/auth/logout" }
+        },
+        {
+          "name": "Refresh token đã logout - 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Cookie", "value": "refreshToken={{customer2RefreshToken}}" }], "url": "{{baseUrl}}/api/auth/refresh-token" }
+        }
+      ]
+    }
+  ]
+}

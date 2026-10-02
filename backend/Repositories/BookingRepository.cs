@@ -45,7 +45,7 @@ public class BookingRepository : IBookingRepository
 		var connection = _db.Database.GetDbConnection();
 		await using var command = connection.CreateCommand();
 		command.Transaction = _db.Database.CurrentTransaction!.GetDbTransaction();
-		command.CommandText = "SELECT \"IsActive\" FROM \"Staffs\" WHERE \"Id\" = @staffId FOR UPDATE";
+		command.CommandText = "SELECT \"IsActive\" FROM \"Staffs\" WHERE \"Id\" = @staffId FOR NO KEY UPDATE";
 
 		var staffIdParameter = command.CreateParameter();
 		staffIdParameter.ParameterName = "staffId";
@@ -66,7 +66,7 @@ public class BookingRepository : IBookingRepository
 			&& schedule.EndTime >= localEndTime);
 
 		if (!scheduleExists)
-			throw AppException.Conflict("Khung giờ đã chọn không nằm trong ca làm việc của nhân viên.");
+			throw AppException.BadRequest("Khung giờ đã chọn không nằm trong ca làm việc của nhân viên.");
 
 		var hasOverlap = await _db.Bookings.AnyAsync(existing =>
 			existing.StaffId == booking.StaffId
@@ -93,6 +93,7 @@ public class BookingRepository : IBookingRepository
 		int? customerId,
 		BookingStatus? status,
 		string? search,
+		DateOnly? date,
 		int offset,
 		int limit)
 	{
@@ -105,6 +106,21 @@ public class BookingRepository : IBookingRepository
 
 		if (status.HasValue)
 			query = query.Where(booking => booking.Status == status.Value);
+
+		if (date.HasValue)
+		{
+			var timeZoneId = OperatingSystem.IsWindows()
+				? "SE Asia Standard Time"
+				: "Asia/Ho_Chi_Minh";
+			var businessTimeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+			var localDayStart = date.Value.ToDateTime(TimeOnly.MinValue);
+			var utcDayStart = TimeZoneInfo.ConvertTimeToUtc(localDayStart, businessTimeZone);
+			var utcDayEnd = TimeZoneInfo.ConvertTimeToUtc(localDayStart.AddDays(1), businessTimeZone);
+
+			query = query.Where(booking =>
+				booking.StartTime >= utcDayStart
+				&& booking.StartTime < utcDayEnd);
+		}
 
 		if (!string.IsNullOrWhiteSpace(search))
 		{
@@ -151,6 +167,9 @@ public class BookingRepository : IBookingRepository
 			if (booking.Status != BookingStatus.Confirmed)
 				throw AppException.Conflict("Chỉ booking Confirmed mới được hoàn tất.");
 
+			if (nowUtc < booking.EndTime)
+				throw AppException.Conflict("Chỉ có thể hoàn tất booking khi đã đến hoặc qua giờ kết thúc.");
+
 			booking.Status = BookingStatus.Completed;
 		}
 		else
@@ -159,9 +178,8 @@ public class BookingRepository : IBookingRepository
 		}
 
 		await _db.SaveChangesAsync();
-		var result = await GetBookingWithDetailsAsync(bookingId);
 		await transaction.CommitAsync();
-		return result;
+		return await GetBookingWithDetailsAsync(bookingId);
 	}
 
 	public async Task<Booking> CancelWithLockAsync(
@@ -189,9 +207,8 @@ public class BookingRepository : IBookingRepository
 		booking.CancellationReason = reason.Trim();
 
 		await _db.SaveChangesAsync();
-		var result = await GetBookingWithDetailsAsync(bookingId);
 		await transaction.CommitAsync();
-		return result;
+		return await GetBookingWithDetailsAsync(bookingId);
 	}
 
 	private async Task LockBookingRowAsync(int bookingId)
