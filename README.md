@@ -16,12 +16,6 @@ Hệ thống đặt lịch dịch vụ gồm backend ASP.NET Core Web API và fr
 7. [Dữ liệu mẫu](#7-dữ-liệu-mẫu)
 8. [Màn hình](#8-màn-hình)
 9. [CÁC API ĐÃ HOÀN THÀNH](#9-api)
-10. [Test API](#10-test-api)
-11. [Quy tắc nghiệp vụ và quyết định thiết kế](#11-quy-tắc-nghiệp-vụ-và-quyết-định-thiết-kế)
-12. [Thiết kế database](#12-thiết-kế-database)
-13. [Chức năng đã hoàn thành / chưa hoàn thành](#13-chức-năng-đã-hoàn-thành--chưa-hoàn-thành)
-14. [Hạn chế đã biết và hướng phát triển](#14-hạn-chế-đã-biết-và-hướng-phát-triển)
-15. [Khắc phục sự cố thường gặp](#15-khắc-phục-sự-cố-thường-gặp)
 
 ---
 
